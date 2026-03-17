@@ -1,196 +1,194 @@
 -- Services
 local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Settings
-getgenv().IceySettings = {
-    Aimbot = false,
-    ESP = false,
-    Fly = false,
-    Noclip = false,
-    FOV = 150,
-    FlySpeed = 70
-}
+local player = Players.LocalPlayer
 
 -- GUI
-local ScreenGui = Instance.new("ScreenGui",game.CoreGui)
-local Frame = Instance.new("Frame",ScreenGui)
-Frame.Size = UDim2.new(0,200,0,250)
-Frame.Position = UDim2.new(0,20,0.3,0)
+local ScreenGui = Instance.new("ScreenGui", player.PlayerGui)
+
+local Frame = Instance.new("Frame")
+Frame.Parent = ScreenGui
+Frame.Size = UDim2.new(0,260,0,220)
+Frame.Position = UDim2.new(0.5,-130,0.5,-110)
 Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Frame.Active = true
+Frame.Draggable = true
 
-local Layout = Instance.new("UIListLayout",Frame)
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Parent = Frame
+Title.Size = UDim2.new(1,0,0,40)
+Title.Text = "Script Menu"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.BackgroundTransparency = 1
+Title.TextScaled = true
 
-function ToggleButton(name,setting)
+-- Button maker
+function Button(name,pos)
 
-    local Btn = Instance.new("TextButton",Frame)
-    Btn.Size = UDim2.new(1,0,0,40)
-    Btn.BackgroundColor3 = Color3.fromRGB(45,45,45)
-    Btn.TextColor3 = Color3.new(1,1,1)
+	local b = Instance.new("TextButton")
+	b.Parent = Frame
+	b.Size = UDim2.new(0,200,0,35)
+	b.Position = UDim2.new(0.5,-100,0,pos)
+	b.Text = name.." : OFF"
+	b.BackgroundColor3 = Color3.fromRGB(40,40,40)
+	b.TextColor3 = Color3.new(1,1,1)
 
-    local function Update()
-        if IceySettings[setting] then
-            Btn.Text = name.." : ON"
-        else
-            Btn.Text = name.." : OFF"
-        end
-    end
-
-    Update()
-
-    Btn.MouseButton1Click:Connect(function()
-        IceySettings[setting] = not IceySettings[setting]
-        Update()
-    end)
-
+	return b
 end
 
-ToggleButton("Aimbot","Aimbot")
-ToggleButton("ESP","ESP")
-ToggleButton("Fly","Fly")
-ToggleButton("Noclip","Noclip")
+local ESP = Button("ESP",50)
+local AIM = Button("Aimbot",90)
+local FLY = Button("Fly",130)
+local NOCLIP = Button("Noclip",170)
 
--- FOV Circle
-local Circle = Drawing.new("Circle")
-Circle.Visible = true
-Circle.Color = Color3.new(1,1,1)
-Circle.Thickness = 2
-Circle.Filled = false
-Circle.Radius = IceySettings.FOV
+-- Mobile Hide
+local Hide = Instance.new("TextButton")
+Hide.Parent = ScreenGui
+Hide.Size = UDim2.new(0,50,0,50)
+Hide.Position = UDim2.new(0.5,-25,0,5)
+Hide.Text = "-"
+Hide.BackgroundColor3 = Color3.fromRGB(40,40,40)
+Hide.TextColor3 = Color3.new(1,1,1)
 
--- ESP
-local ESP = {}
+-- Toggle UI
+local visible = true
 
-function CreateESP(player)
-
-    local Box = Drawing.new("Square")
-    Box.Visible = false
-    Box.Color = Color3.new(1,0,0)
-    Box.Thickness = 2
-
-    ESP[player] = Box
-
+local function ToggleUI()
+	visible = not visible
+	Frame.Visible = visible
 end
 
-for _,p in pairs(Players:GetPlayers()) do
-if p ~= LocalPlayer then
-CreateESP(p)
-end
-end
-
-Players.PlayerAdded:Connect(function(p)
-CreateESP(p)
+UIS.InputBegan:Connect(function(i,gp)
+	if gp then return end
+	
+	if i.KeyCode == Enum.KeyCode.K then
+		ToggleUI()
+	end
 end)
 
--- Get Closest
-function GetClosest()
+Hide.MouseButton1Click:Connect(ToggleUI)
 
-local closest
-local dist = IceySettings.FOV
+-- States
+local espOn=false
+local aimOn=false
+local flyOn=false
+local noclipOn=false
 
-for _,p in pairs(Players:GetPlayers()) do
+ESP.MouseButton1Click:Connect(function()
+	espOn=not espOn
+	ESP.Text="ESP : "..(espOn and "ON" or "OFF")
+end)
 
-if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+AIM.MouseButton1Click:Connect(function()
+	aimOn=not aimOn
+	AIM.Text="Aimbot : "..(aimOn and "ON" or "OFF")
+end)
 
-local pos,visible = Camera:WorldToViewportPoint(p.Character.Head.Position)
+FLY.MouseButton1Click:Connect(function()
+	flyOn=not flyOn
+	FLY.Text="Fly : "..(flyOn and "ON" or "OFF")
+end)
 
-if visible then
+NOCLIP.MouseButton1Click:Connect(function()
+	noclipOn=not noclipOn
+	NOCLIP.Text="Noclip : "..(noclipOn and "ON" or "OFF")
+end)
 
-local mag = (Vector2.new(pos.X,pos.Y) -
-Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)).Magnitude
-
-if mag < dist then
-dist = mag
-closest = p
-end
-
-end
-end
-end
-
-return closest
-
-end
-
--- Fly
-local FlyVel
-
-function StartFly()
-
-local root = LocalPlayer.Character:WaitForChild("HumanoidRootPart")
-
-FlyVel = Instance.new("BodyVelocity")
-FlyVel.MaxForce = Vector3.new(9e9,9e9,9e9)
-FlyVel.Parent = root
-
-end
-
--- Main Loop
-RunService.RenderStepped:Connect(function()
-
-Circle.Position = Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)
-Circle.Radius = IceySettings.FOV
+-- FOV Circle
+local circle = Drawing.new("Circle")
+circle.Radius = 120
+circle.Color = Color3.fromRGB(255,255,255)
+circle.Thickness = 2
+circle.Filled = false
+circle.Visible = false
 
 -- Aimbot
-if IceySettings.Aimbot then
+RunService.RenderStepped:Connect(function()
 
-local target = GetClosest()
+	circle.Position = UIS:GetMouseLocation()
+	circle.Visible = aimOn
 
-if target and target.Character then
-Camera.CFrame = CFrame.new(Camera.CFrame.Position,target.Character.Head.Position)
-end
+	if aimOn then
 
-end
+		local target=nil
+		local dist=9999
+
+		for i,v in pairs(Players:GetPlayers()) do
+			if v~=player and v.Character and v.Character:FindFirstChild("Head") then
+
+				local pos,vis=Camera:WorldToViewportPoint(v.Character.Head.Position)
+
+				if vis then
+
+					local mag=(Vector2.new(pos.X,pos.Y)-UIS:GetMouseLocation()).Magnitude
+
+					if mag<circle.Radius and mag<dist then
+						dist=mag
+						target=v
+					end
+
+				end
+
+			end
+		end
+
+		if target then
+			Camera.CFrame=CFrame.new(Camera.CFrame.Position,target.Character.Head.Position)
+		end
+
+	end
+
+end)
 
 -- ESP
-for player,box in pairs(ESP) do
+RunService.RenderStepped:Connect(function()
 
-if IceySettings.ESP and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+	if espOn then
 
-local pos,visible = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+		for i,v in pairs(Players:GetPlayers()) do
 
-if visible then
-box.Visible = true
-box.Size = Vector2.new(40,60)
-box.Position = Vector2.new(pos.X-20,pos.Y-30)
-else
-box.Visible = false
-end
+			if v~=player and v.Character and v.Character:FindFirstChild("Head") then
 
-else
-box.Visible = false
-end
+				if not v.Character.Head:FindFirstChild("ESP") then
 
-end
+					local bill=Instance.new("BillboardGui",v.Character.Head)
+					bill.Name="ESP"
+					bill.Size=UDim2.new(0,100,0,40)
+					bill.AlwaysOnTop=true
 
--- Fly
-if IceySettings.Fly then
+					local txt=Instance.new("TextLabel",bill)
+					txt.Size=UDim2.new(1,0,1,0)
+					txt.BackgroundTransparency=1
+					txt.TextColor3=Color3.new(1,0,0)
+					txt.TextScaled=true
 
-if not FlyVel then
-StartFly()
-end
+					RunService.RenderStepped:Connect(function()
+						if v.Character and v.Character:FindFirstChild("Humanoid") then
+							txt.Text=v.Name.." | "..math.floor(v.Character.Humanoid.Health)
+						end
+					end)
 
-FlyVel.Velocity = Camera.CFrame.LookVector * IceySettings.FlySpeed
+				end
 
-end
+			end
+
+		end
+
+	end
 
 end)
 
 -- Noclip
 RunService.Stepped:Connect(function()
-
-if IceySettings.Noclip and LocalPlayer.Character then
-
-for _,v in pairs(LocalPlayer.Character:GetDescendants()) do
-if v:IsA("BasePart") then
-v.CanCollide = false
-end
-end
-
-end
-
+	if noclipOn and player.Character then
+		for i,v in pairs(player.Character:GetDescendants()) do
+			if v:IsA("BasePart") then
+				v.CanCollide=false
+			end
+		end
+	end
 end)
-
-print("Icey Script Loaded")
