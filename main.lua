@@ -1,194 +1,323 @@
--- Services
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local LP = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local player = Players.LocalPlayer
+-- 設定
+local Settings = {
+Aimbot = false,
+SilentAim = false,
+LockHead = false,
 
--- GUI
-local ScreenGui = Instance.new("ScreenGui", player.PlayerGui)
+WallCheck = true,
+KillCheck = true,
 
-local Frame = Instance.new("Frame")
-Frame.Parent = ScreenGui
-Frame.Size = UDim2.new(0,260,0,220)
-Frame.Position = UDim2.new(0.5,-130,0.5,-110)
-Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-Frame.Active = true
-Frame.Draggable = true
+Fly = false,
+FlySpeed = 80,
 
--- Title
-local Title = Instance.new("TextLabel")
-Title.Parent = Frame
-Title.Size = UDim2.new(1,0,0,40)
-Title.Text = "Script Menu"
-Title.TextColor3 = Color3.new(1,1,1)
-Title.BackgroundTransparency = 1
-Title.TextScaled = true
+Noclip = false,
 
--- Button maker
-function Button(name,pos)
+ESP = false,
 
-	local b = Instance.new("TextButton")
-	b.Parent = Frame
-	b.Size = UDim2.new(0,200,0,35)
-	b.Position = UDim2.new(0.5,-100,0,pos)
-	b.Text = name.." : OFF"
-	b.BackgroundColor3 = Color3.fromRGB(40,40,40)
-	b.TextColor3 = Color3.new(1,1,1)
+FOV = 150
+}
 
-	return b
+-- FOV 圓圈
+local Circle = Drawing.new("Circle")
+Circle.Visible = false
+Circle.Radius = Settings.FOV
+Circle.Filled = false
+Circle.Thickness = 2
+Circle.Transparency = 1
+
+RunService.RenderStepped:Connect(function()
+
+Circle.Position = Vector2.new(
+Camera.ViewportSize.X/2,
+Camera.ViewportSize.Y/2
+)
+
+Circle.Visible = Settings.Aimbot
+Circle.Radius = Settings.FOV
+
+end)
+
+-- Wall Check
+function WallCheck(part)
+
+local origin = Camera.CFrame.Position
+local ray = Ray.new(origin,(part.Position-origin).Unit*500)
+
+local hit = workspace:FindPartOnRay(ray,LP.Character)
+
+return hit == part
+
 end
 
-local ESP = Button("ESP",50)
-local AIM = Button("Aimbot",90)
-local FLY = Button("Fly",130)
-local NOCLIP = Button("Noclip",170)
+-- 找最近敵人
+function GetTarget()
 
--- Mobile Hide
-local Hide = Instance.new("TextButton")
-Hide.Parent = ScreenGui
-Hide.Size = UDim2.new(0,50,0,50)
-Hide.Position = UDim2.new(0.5,-25,0,5)
-Hide.Text = "-"
-Hide.BackgroundColor3 = Color3.fromRGB(40,40,40)
-Hide.TextColor3 = Color3.new(1,1,1)
+local closest = nil
+local shortest = Settings.FOV
 
--- Toggle UI
-local visible = true
+for _,plr in pairs(Players:GetPlayers()) do
 
-local function ToggleUI()
-	visible = not visible
-	Frame.Visible = visible
+if plr ~= LP and plr.Character then
+
+local head = plr.Character:FindFirstChild("Head")
+local hum = plr.Character:FindFirstChild("Humanoid")
+
+if head and hum then
+
+if Settings.KillCheck and hum.Health <= 0 then
+continue
 end
 
-UIS.InputBegan:Connect(function(i,gp)
-	if gp then return end
-	
-	if i.KeyCode == Enum.KeyCode.K then
-		ToggleUI()
-	end
-end)
+local pos,vis = Camera:WorldToViewportPoint(head.Position)
 
-Hide.MouseButton1Click:Connect(ToggleUI)
+if vis then
 
--- States
-local espOn=false
-local aimOn=false
-local flyOn=false
-local noclipOn=false
+local dist = (Vector2.new(pos.X,pos.Y) - Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)).Magnitude
 
-ESP.MouseButton1Click:Connect(function()
-	espOn=not espOn
-	ESP.Text="ESP : "..(espOn and "ON" or "OFF")
-end)
+if dist < shortest then
 
-AIM.MouseButton1Click:Connect(function()
-	aimOn=not aimOn
-	AIM.Text="Aimbot : "..(aimOn and "ON" or "OFF")
-end)
+if Settings.WallCheck then
+if not WallCheck(head) then
+continue
+end
+end
 
-FLY.MouseButton1Click:Connect(function()
-	flyOn=not flyOn
-	FLY.Text="Fly : "..(flyOn and "ON" or "OFF")
-end)
+shortest = dist
+closest = head
 
-NOCLIP.MouseButton1Click:Connect(function()
-	noclipOn=not noclipOn
-	NOCLIP.Text="Noclip : "..(noclipOn and "ON" or "OFF")
-end)
+end
+end
+end
+end
+end
 
--- FOV Circle
-local circle = Drawing.new("Circle")
-circle.Radius = 120
-circle.Color = Color3.fromRGB(255,255,255)
-circle.Thickness = 2
-circle.Filled = false
-circle.Visible = false
+return closest
+end
 
 -- Aimbot
 RunService.RenderStepped:Connect(function()
 
-	circle.Position = UIS:GetMouseLocation()
-	circle.Visible = aimOn
+if not Settings.Aimbot then return end
 
-	if aimOn then
+local target = GetTarget()
 
-		local target=nil
-		local dist=9999
+if target and Settings.LockHead then
 
-		for i,v in pairs(Players:GetPlayers()) do
-			if v~=player and v.Character and v.Character:FindFirstChild("Head") then
+Camera.CFrame = CFrame.new(Camera.CFrame.Position,target.Position)
 
-				local pos,vis=Camera:WorldToViewportPoint(v.Character.Head.Position)
-
-				if vis then
-
-					local mag=(Vector2.new(pos.X,pos.Y)-UIS:GetMouseLocation()).Magnitude
-
-					if mag<circle.Radius and mag<dist then
-						dist=mag
-						target=v
-					end
-
-				end
-
-			end
-		end
-
-		if target then
-			Camera.CFrame=CFrame.new(Camera.CFrame.Position,target.Character.Head.Position)
-		end
-
-	end
+end
 
 end)
 
 -- ESP
+local ESPTable = {}
+
+function CreateESP(player)
+
+local box = Drawing.new("Square")
+box.Thickness = 2
+box.Filled = false
+box.Visible = false
+
+ESPTable[player] = box
+
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+if p ~= LP then
+CreateESP(p)
+end
+end
+
+Players.PlayerAdded:Connect(CreateESP)
+
 RunService.RenderStepped:Connect(function()
 
-	if espOn then
+for player,box in pairs(ESPTable) do
 
-		for i,v in pairs(Players:GetPlayers()) do
+if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 
-			if v~=player and v.Character and v.Character:FindFirstChild("Head") then
+local root = player.Character.HumanoidRootPart
+local pos,vis = Camera:WorldToViewportPoint(root.Position)
 
-				if not v.Character.Head:FindFirstChild("ESP") then
+if vis and Settings.ESP then
 
-					local bill=Instance.new("BillboardGui",v.Character.Head)
-					bill.Name="ESP"
-					bill.Size=UDim2.new(0,100,0,40)
-					bill.AlwaysOnTop=true
+box.Visible = true
+box.Size = Vector2.new(40,60)
+box.Position = Vector2.new(pos.X-20,pos.Y-30)
 
-					local txt=Instance.new("TextLabel",bill)
-					txt.Size=UDim2.new(1,0,1,0)
-					txt.BackgroundTransparency=1
-					txt.TextColor3=Color3.new(1,0,0)
-					txt.TextScaled=true
+else
 
-					RunService.RenderStepped:Connect(function()
-						if v.Character and v.Character:FindFirstChild("Humanoid") then
-							txt.Text=v.Name.." | "..math.floor(v.Character.Humanoid.Health)
-						end
-					end)
+box.Visible = false
 
-				end
+end
 
-			end
+end
 
-		end
-
-	end
+end
 
 end)
 
--- Noclip
+-- Fly
+local BV
+
+RunService.RenderStepped:Connect(function()
+
+if Settings.Fly and LP.Character then
+
+local root = LP.Character:FindFirstChild("HumanoidRootPart")
+
+if root then
+
+if not BV then
+BV = Instance.new("BodyVelocity")
+BV.MaxForce = Vector3.new(999999,999999,999999)
+BV.Parent = root
+end
+
+local dir = Vector3.new()
+
+if UIS:IsKeyDown(Enum.KeyCode.W) then
+dir += Camera.CFrame.LookVector
+end
+
+if UIS:IsKeyDown(Enum.KeyCode.S) then
+dir -= Camera.CFrame.LookVector
+end
+
+if UIS:IsKeyDown(Enum.KeyCode.A) then
+dir -= Camera.CFrame.RightVector
+end
+
+if UIS:IsKeyDown(Enum.KeyCode.D) then
+dir += Camera.CFrame.RightVector
+end
+
+BV.Velocity = dir * Settings.FlySpeed
+
+end
+
+else
+
+if BV then
+BV:Destroy()
+BV = nil
+end
+
+end
+
+end)
+
+-- Noclip (超穩定版)
+
+local SafeHeight = 10
+
 RunService.Stepped:Connect(function()
-	if noclipOn and player.Character then
-		for i,v in pairs(player.Character:GetDescendants()) do
-			if v:IsA("BasePart") then
-				v.CanCollide=false
-			end
-		end
-	end
+
+if Settings and Settings.Noclip and LP.Character then
+
+local char = LP.Character
+local root = char:FindFirstChild("HumanoidRootPart")
+
+-- 穿牆
+for _,v in pairs(char:GetDescendants()) do
+if v:IsA("BasePart") then
+v.CanCollide = false
+end
+end
+
+-- 防掉出地圖
+if root then
+
+-- 如果掉到虛空
+if root.Position.Y < -20 then
+root.CFrame = CFrame.new(root.Position.X, SafeHeight, root.Position.Z)
+end
+
+-- 向下偵測地板
+local rayOrigin = root.Position
+local rayDir = Vector3.new(0,-200,0)
+
+local result = workspace:Raycast(rayOrigin, rayDir)
+
+if not result then
+root.CFrame = CFrame.new(root.Position.X, SafeHeight, root.Position.Z)
+end
+
+end
+
+end
+
+end)
+
+-- UI
+local gui = Instance.new("ScreenGui")
+gui.Parent = game.CoreGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,220,0,300)
+frame.Position = UDim2.new(0,20,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.Parent = gui
+
+frame.Active = true
+frame.Draggable = true
+
+function Button(text,callback)
+
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(1,0,0,30)
+btn.Text = text
+btn.Parent = frame
+
+btn.MouseButton1Click:Connect(callback)
+
+end
+
+Button("Aimbot",function()
+Settings.Aimbot = not Settings.Aimbot
+end)
+
+Button("Silent Aim",function()
+Settings.SilentAim = not Settings.SilentAim
+end)
+
+Button("ESP",function()
+Settings.ESP = not Settings.ESP
+end)
+
+Button("Fly",function()
+Settings.Fly = not Settings.Fly
+end)
+
+Button("Noclip",function()
+Settings.Noclip = not Settings.Noclip
+end)
+
+Button("Wall Check",function()
+Settings.WallCheck = not Settings.WallCheck
+end)
+
+Button("Kill Check",function()
+Settings.KillCheck = not Settings.KillCheck
+end)
+
+-- K 隱藏
+UIS.InputBegan:Connect(function(input,gp)
+
+if gp then return end
+
+if input.KeyCode == Enum.KeyCode.K then
+
+frame.Visible = not frame.Visible
+
+end
+
 end)
