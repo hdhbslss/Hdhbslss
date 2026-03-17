@@ -12,7 +12,6 @@ FlySpeed = 80,
 Noclip = false,
 ESP = false,
 Aimbot = false,
-SilentAim = false,
 WallCheck = true,
 FOV = 120
 }
@@ -27,15 +26,13 @@ circle.Radius = Settings.FOV
 circle.Visible = false
 
 RunService.RenderStepped:Connect(function()
-
 local size = Camera.ViewportSize
 circle.Position = Vector2.new(size.X/2,size.Y/2)
-
+circle.Radius = Settings.FOV
 end)
 
 -- GUI
-local gui = Instance.new("ScreenGui")
-gui.Parent = game.CoreGui
+local gui = Instance.new("ScreenGui",game.CoreGui)
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0,240,0,360)
@@ -57,6 +54,19 @@ mobile.Parent = gui
 mobile.MouseButton1Click:Connect(function()
 frame.Visible = not frame.Visible
 frame.Position = UDim2.new(0.5,-120,0,60)
+end)
+
+-- FOV 顯示
+local fovText = Instance.new("TextLabel")
+fovText.Size = UDim2.new(0,220,0,30)
+fovText.Position = UDim2.new(0,10,0,300)
+fovText.TextColor3 = Color3.new(1,1,1)
+fovText.BackgroundTransparency = 1
+fovText.Text = "FOV: "..Settings.FOV
+fovText.Parent = frame
+
+RunService.RenderStepped:Connect(function()
+fovText.Text = "FOV: "..Settings.FOV
 end)
 
 -- 按鈕函數
@@ -84,7 +94,6 @@ Settings.Fly = not Settings.Fly
 
 local char = LP.Character
 if not char then return end
-
 local hrp = char:FindFirstChild("HumanoidRootPart")
 
 if Settings.Fly then
@@ -92,7 +101,6 @@ if Settings.Fly then
 local bv = Instance.new("BodyVelocity")
 bv.Name = "FlyVelocity"
 bv.MaxForce = Vector3.new(1e9,1e9,1e9)
-bv.Velocity = Vector3.new()
 bv.Parent = hrp
 
 flyConn = RunService.RenderStepped:Connect(function()
@@ -165,50 +173,21 @@ end)
 RunService.Stepped:Connect(function()
 
 if Settings.Noclip and LP.Character then
-
 for _,v in pairs(LP.Character:GetDescendants()) do
 if v:IsA("BasePart") then
 v.CanCollide = false
 end
 end
-
 end
 
 end)
 
 -- ESP
-local function AddESP(p)
-
-if p ~= LP then
-
-p.CharacterAdded:Connect(function(char)
-
-if Settings.ESP then
-
-local h = Instance.new("Highlight")
-h.FillColor = Color3.fromRGB(255,0,0)
-h.OutlineColor = Color3.new(1,1,1)
-h.Parent = char
-
-end
-
-end)
-
-end
-end
-
-for _,p in pairs(Players:GetPlayers()) do
-AddESP(p)
-end
-
-Players.PlayerAdded:Connect(AddESP)
-
 Button("ESP",170,function()
 
 Settings.ESP = not Settings.ESP
 
 for _,p in pairs(Players:GetPlayers()) do
-
 if p ~= LP and p.Character then
 
 if Settings.ESP then
@@ -238,20 +217,46 @@ circle.Visible = Settings.Aimbot
 
 end)
 
--- Silent Aim
-Button("Silent Aim",250,function()
-Settings.SilentAim = not Settings.SilentAim
+-- FOV 控制
+Button("FOV +",250,function()
+Settings.FOV = Settings.FOV + 10
 end)
 
--- FOV
-Button("FOV +",290,function()
-Settings.FOV = Settings.FOV + 20
-circle.Radius = Settings.FOV
+Button("FOV -",290,function()
+Settings.FOV = math.max(30,Settings.FOV - 10)
 end)
 
-Button("FOV -",330,function()
-Settings.FOV = math.max(40,Settings.FOV - 20)
-circle.Radius = Settings.FOV
+-- Aimbot
+RunService.RenderStepped:Connect(function()
+
+if not Settings.Aimbot then return end
+
+local closest = nil
+local dist = Settings.FOV
+
+for _,p in pairs(Players:GetPlayers()) do
+if p ~= LP and p.Character and p.Character:FindFirstChild("Head") then
+
+local head = p.Character.Head
+local pos,visible = Camera:WorldToViewportPoint(head.Position)
+
+if visible then
+
+local diff = (Vector2.new(pos.X,pos.Y) - circle.Position).Magnitude
+
+if diff < dist then
+dist = diff
+closest = head
+end
+
+end
+end
+end
+
+if closest then
+Camera.CFrame = CFrame.new(Camera.CFrame.Position,closest.Position)
+end
+
 end)
 
 -- K鍵隱藏
