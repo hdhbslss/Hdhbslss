@@ -23,33 +23,34 @@ Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 
 local Layout = Instance.new("UIListLayout",Frame)
 
-function Button(text,callback)
+function ToggleButton(name,setting)
 
     local Btn = Instance.new("TextButton",Frame)
     Btn.Size = UDim2.new(1,0,0,40)
-    Btn.Text = text
     Btn.BackgroundColor3 = Color3.fromRGB(45,45,45)
     Btn.TextColor3 = Color3.new(1,1,1)
 
-    Btn.MouseButton1Click:Connect(callback)
+    local function Update()
+        if IceySettings[setting] then
+            Btn.Text = name.." : ON"
+        else
+            Btn.Text = name.." : OFF"
+        end
+    end
+
+    Update()
+
+    Btn.MouseButton1Click:Connect(function()
+        IceySettings[setting] = not IceySettings[setting]
+        Update()
+    end)
 
 end
 
-Button("Toggle Aimbot",function()
-IceySettings.Aimbot = not IceySettings.Aimbot
-end)
-
-Button("Toggle ESP",function()
-IceySettings.ESP = not IceySettings.ESP
-end)
-
-Button("Toggle Fly",function()
-IceySettings.Fly = not IceySettings.Fly
-end)
-
-Button("Toggle Noclip",function()
-IceySettings.Noclip = not IceySettings.Noclip
-end)
+ToggleButton("Aimbot","Aimbot")
+ToggleButton("ESP","ESP")
+ToggleButton("Fly","Fly")
+ToggleButton("Noclip","Noclip")
 
 -- FOV Circle
 local Circle = Drawing.new("Circle")
