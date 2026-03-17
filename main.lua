@@ -7,21 +7,31 @@ local Camera = workspace.CurrentCamera
 
 -- 設定
 local Settings = {
-
 Fly = false,
 FlySpeed = 80,
-
 Noclip = false,
-
 ESP = false,
-
 Aimbot = false,
 SilentAim = false,
 WallCheck = true,
-
 FOV = 120
-
 }
+
+-- FOV 圓圈
+local circle = Drawing.new("Circle")
+circle.Color = Color3.new(1,1,1)
+circle.Thickness = 2
+circle.NumSides = 100
+circle.Filled = false
+circle.Radius = Settings.FOV
+circle.Visible = false
+
+RunService.RenderStepped:Connect(function()
+
+local size = Camera.ViewportSize
+circle.Position = Vector2.new(size.X/2,size.Y/2)
+
+end)
 
 -- GUI
 local gui = Instance.new("ScreenGui")
@@ -49,7 +59,7 @@ frame.Visible = not frame.Visible
 frame.Position = UDim2.new(0.5,-120,0,60)
 end)
 
--- 按鈕
+-- 按鈕函數
 local function Button(text,y,callback)
 
 local b = Instance.new("TextButton")
@@ -74,14 +84,15 @@ Settings.Fly = not Settings.Fly
 
 local char = LP.Character
 if not char then return end
+
 local hrp = char:FindFirstChild("HumanoidRootPart")
 
 if Settings.Fly then
 
 local bv = Instance.new("BodyVelocity")
+bv.Name = "FlyVelocity"
 bv.MaxForce = Vector3.new(1e9,1e9,1e9)
 bv.Velocity = Vector3.new()
-bv.Name = "Fly"
 bv.Parent = hrp
 
 flyConn = RunService.RenderStepped:Connect(function()
@@ -93,16 +104,16 @@ local move =
 (cam.RightVector * (control.R + control.L)) +
 (Vector3.new(0,1,0) * (control.U + control.D))
 
-if hrp:FindFirstChild("Fly") then
-hrp.Fly.Velocity = move * Settings.FlySpeed
+if hrp:FindFirstChild("FlyVelocity") then
+hrp.FlyVelocity.Velocity = move * Settings.FlySpeed
 end
 
 end)
 
 else
 
-if hrp:FindFirstChild("Fly") then
-hrp.Fly:Destroy()
+if hrp:FindFirstChild("FlyVelocity") then
+hrp.FlyVelocity:Destroy()
 end
 
 if flyConn then
@@ -113,7 +124,6 @@ end
 
 end)
 
--- Fly速度
 Button("Fly Speed +",50,function()
 Settings.FlySpeed = Settings.FlySpeed + 20
 end)
@@ -167,6 +177,32 @@ end
 end)
 
 -- ESP
+local function AddESP(p)
+
+if p ~= LP then
+
+p.CharacterAdded:Connect(function(char)
+
+if Settings.ESP then
+
+local h = Instance.new("Highlight")
+h.FillColor = Color3.fromRGB(255,0,0)
+h.OutlineColor = Color3.new(1,1,1)
+h.Parent = char
+
+end
+
+end)
+
+end
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+AddESP(p)
+end
+
+Players.PlayerAdded:Connect(AddESP)
+
 Button("ESP",170,function()
 
 Settings.ESP = not Settings.ESP
@@ -196,8 +232,10 @@ end)
 
 -- Aimbot
 Button("Aimbot",210,function()
+
 Settings.Aimbot = not Settings.Aimbot
 circle.Visible = Settings.Aimbot
+
 end)
 
 -- Silent Aim
@@ -214,24 +252,6 @@ end)
 Button("FOV -",330,function()
 Settings.FOV = math.max(40,Settings.FOV - 20)
 circle.Radius = Settings.FOV
-end)
-
--- 圓圈
-local circle = Drawing.new("Circle")
-circle.Color = Color3.new(1,1,1)
-circle.Thickness = 2
-circle.NumSides = 100
-circle.Filled = false
-circle.Radius = Settings.FOV
-circle.Visible = false
-
-RunService.RenderStepped:Connect(function()
-
-local size = Camera.ViewportSize
-local center = Vector2.new(size.X/2,size.Y/2)
-
-circle.Position = center
-
 end)
 
 -- K鍵隱藏
