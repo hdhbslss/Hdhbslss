@@ -1,4 +1,6 @@
---// Services
+if getgenv().ScriptHubV7 then return end
+getgenv().ScriptHubV7=true
+
 local Players=game:GetService("Players")
 local RunService=game:GetService("RunService")
 local UIS=game:GetService("UserInputService")
@@ -7,7 +9,6 @@ local LP=Players.LocalPlayer
 local Camera=workspace.CurrentCamera
 local Mouse=LP:GetMouse()
 
---// Settings
 local Settings={
 Aimbot=false,
 SilentAim=false,
@@ -22,7 +23,7 @@ FlySpeed=80,
 FOV=120
 }
 
---// FOV Circle
+-- FOV
 local circle=Drawing.new("Circle")
 circle.Color=Color3.fromRGB(0,170,255)
 circle.Thickness=2
@@ -36,12 +37,12 @@ circle.Position=Vector2.new(size.X/2,size.Y/2)
 circle.Radius=Settings.FOV
 end)
 
---// UI
+-- UI
 local gui=Instance.new("ScreenGui",game.CoreGui)
 
 local frame=Instance.new("Frame",gui)
-frame.Size=UDim2.new(0,250,0,520)
-frame.Position=UDim2.new(.5,-125,.5,-260)
+frame.Size=UDim2.new(0,260,0,580)
+frame.Position=UDim2.new(.5,-130,.5,-290)
 frame.BackgroundColor3=Color3.fromRGB(20,20,20)
 frame.Active=true
 frame.Draggable=true
@@ -53,12 +54,20 @@ stroke.Color=Color3.fromRGB(0,170,255)
 local title=Instance.new("TextLabel",frame)
 title.Size=UDim2.new(1,0,0,40)
 title.BackgroundTransparency=1
-title.Text="Script Hub"
+title.Text="Script Hub V7"
 title.TextColor3=Color3.fromRGB(0,170,255)
 title.Font=Enum.Font.GothamBold
 title.TextSize=22
 
---// Mobile Button
+local info=Instance.new("TextLabel",frame)
+info.Size=UDim2.new(1,0,0,20)
+info.Position=UDim2.new(0,0,0,40)
+info.BackgroundTransparency=1
+info.TextColor3=Color3.new(1,1,1)
+info.Font=Enum.Font.Gotham
+info.TextSize=14
+
+-- Mobile button
 local mobile=Instance.new("TextButton",gui)
 mobile.Size=UDim2.new(0,40,0,40)
 mobile.Position=UDim2.new(.5,-20,0,10)
@@ -71,16 +80,27 @@ mobile.MouseButton1Click:Connect(function()
 frame.Visible=not frame.Visible
 end)
 
---// Button Creator
-local function Toggle(text,y,setting,callback)
+local function Button(text,y,func)
 
 local b=Instance.new("TextButton",frame)
 b.Size=UDim2.new(0,220,0,35)
-b.Position=UDim2.new(0,15,0,y)
+b.Position=UDim2.new(0,20,0,y)
 b.BackgroundColor3=Color3.fromRGB(35,35,35)
+b.TextColor3=Color3.new(1,1,1)
+b.Text=text
 Instance.new("UICorner",b)
 
+b.MouseButton1Click:Connect(func)
+
+return b
+end
+
+local function Toggle(text,y,setting,callback)
+
+local b=Button(text,y)
+
 local function update()
+
 if Settings[setting] then
 b.Text=text.." ✔"
 b.TextColor3=Color3.fromRGB(0,255,0)
@@ -88,6 +108,7 @@ else
 b.Text=text
 b.TextColor3=Color3.new(1,1,1)
 end
+
 end
 
 update()
@@ -100,21 +121,7 @@ end)
 
 end
 
-local function Button(text,y,func)
-
-local b=Instance.new("TextButton",frame)
-b.Size=UDim2.new(0,220,0,35)
-b.Position=UDim2.new(0,15,0,y)
-b.BackgroundColor3=Color3.fromRGB(35,35,35)
-b.TextColor3=Color3.new(1,1,1)
-b.Text=text
-Instance.new("UICorner",b)
-
-b.MouseButton1Click:Connect(func)
-
-end
-
---// Fly
+-- Fly
 local control={F=0,B=0,L=0,R=0,U=0,D=0}
 local flyConn
 
@@ -138,15 +145,12 @@ if i.KeyCode==Enum.KeyCode.LeftShift then control.D=0 end
 end)
 
 local function StopFly()
-
+if flyConn then flyConn:Disconnect() end
 local char=LP.Character
 if char and char:FindFirstChild("HumanoidRootPart") then
 local v=char.HumanoidRootPart:FindFirstChild("Fly")
 if v then v:Destroy() end
 end
-
-if flyConn then flyConn:Disconnect() end
-
 end
 
 local function StartFly()
@@ -158,9 +162,10 @@ if not char then return end
 
 local hrp=char:FindFirstChild("HumanoidRootPart")
 
-local bv=Instance.new("BodyVelocity",hrp)
+local bv=Instance.new("BodyVelocity")
 bv.Name="Fly"
 bv.MaxForce=Vector3.new(1e9,1e9,1e9)
+bv.Parent=hrp
 
 flyConn=RunService.RenderStepped:Connect(function()
 
@@ -177,71 +182,45 @@ end)
 
 end
 
-Toggle("Fly",50,"Fly",function()
+Toggle("Fly",70,"Fly",function()
 if Settings.Fly then StartFly() else StopFly() end
 end)
 
-Button("Fly Speed +",90,function()
+Button("Fly Speed +",110,function()
 Settings.FlySpeed+=20
 end)
 
-Button("Fly Speed -",130,function()
+Button("Fly Speed -",150,function()
 Settings.FlySpeed=math.max(20,Settings.FlySpeed-20)
 end)
 
-LP.CharacterAdded:Connect(function()
-task.wait(1)
-if Settings.Fly then StartFly() end
-end)
+-- ESP
+Toggle("ESP",190,"ESP")
 
---// Noclip
-Toggle("Noclip",170,"Noclip")
+local function AddESP(player)
 
-RunService.Stepped:Connect(function()
-if Settings.Noclip and LP.Character then
-for _,v in pairs(LP.Character:GetDescendants()) do
-if v:IsA("BasePart") then
-v.CanCollide=false
-end
-end
-end
-end)
+if player==LP then return end
 
---// ESP
-Toggle("ESP",210,"ESP")
+player.CharacterAdded:Connect(function(char)
 
-local function AddESP(char)
-
+if not Settings.ESP then return end
 if char:FindFirstChild("Highlight") then return end
 
-local h=Instance.new("Highlight",char)
+local h=Instance.new("Highlight")
 h.FillColor=Color3.fromRGB(255,0,0)
-
-end
-
-RunService.RenderStepped:Connect(function()
-
-if Settings.ESP then
-
-for _,p in pairs(Players:GetPlayers()) do
-if p~=LP and p.Character then
-AddESP(p.Character)
-end
-end
-
-else
-
-for _,p in pairs(Players:GetPlayers()) do
-if p.Character and p.Character:FindFirstChild("Highlight") then
-p.Character.Highlight:Destroy()
-end
-end
-
-end
+h.Parent=char
 
 end)
 
---// WallCheck
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+AddESP(p)
+end
+
+Players.PlayerAdded:Connect(AddESP)
+
+-- WallCheck
 local function WallCheck(target)
 
 local origin=Camera.CFrame.Position
@@ -249,19 +228,15 @@ local direction=(target.Position-origin)
 
 local params=RaycastParams.new()
 params.FilterType=Enum.RaycastFilterType.Blacklist
-params.FilterDescendantsInstances={LP.Character}
+params.FilterDescendantsInstances={LP.Character,target.Parent}
 
 local result=workspace:Raycast(origin,direction,params)
 
-if result then
-return result.Instance:IsDescendantOf(target.Parent)
-end
-
-return true
+return not result
 
 end
 
---// Get Target
+-- Target
 local function GetClosest()
 
 local closest=nil
@@ -306,12 +281,14 @@ return closest
 
 end
 
---// Aimbot
-Toggle("Aimbot",250,"Aimbot",function()
+-- Aimbot
+Toggle("Aimbot",230,"Aimbot",function()
 circle.Visible=Settings.Aimbot
 end)
 
 RunService.RenderStepped:Connect(function()
+
+info.Text="FlySpeed: "..Settings.FlySpeed.." | FOV: "..Settings.FOV
 
 if Settings.Aimbot then
 
@@ -325,8 +302,8 @@ end
 
 end)
 
---// Silent Aim
-Toggle("Silent Aim",290,"SilentAim")
+-- Silent Aim
+Toggle("Silent Aim",270,"SilentAim")
 
 local mt=getrawmetatable(game)
 local old=mt.__index
@@ -348,19 +325,19 @@ return old(self,key)
 
 end)
 
---// Toggles
-Toggle("Wall Check",330,"WallCheck")
-Toggle("Kill Check",370,"KillCheck")
+-- Toggles
+Toggle("Wall Check",310,"WallCheck")
+Toggle("Kill Check",350,"KillCheck")
 
-Button("FOV +",410,function()
+Button("FOV +",390,function()
 Settings.FOV+=10
 end)
 
-Button("FOV -",450,function()
+Button("FOV -",430,function()
 Settings.FOV=math.max(30,Settings.FOV-10)
 end)
 
---// Hide UI
+-- Hide UI
 UIS.InputBegan:Connect(function(i,g)
 if g then return end
 if i.KeyCode==Enum.KeyCode.K then
