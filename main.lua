@@ -1,5 +1,5 @@
-if getgenv().ScriptHubPro then return end
-getgenv().ScriptHubPro=true
+if getgenv().ScriptHubMobile then return end
+getgenv().ScriptHubMobile=true
 
 local Players=game:GetService("Players")
 local RunService=game:GetService("RunService")
@@ -30,17 +30,19 @@ circle.Filled=false
 circle.Visible=false
 
 RunService.RenderStepped:Connect(function()
+
 local size=Camera.ViewportSize
 circle.Position=Vector2.new(size.X/2,size.Y/2)
 circle.Radius=Settings.FOV
+
 end)
 
 -- UI
 local gui=Instance.new("ScreenGui",game.CoreGui)
 
 local frame=Instance.new("Frame",gui)
-frame.Size=UDim2.new(0,240,0,460)
-frame.Position=UDim2.new(.5,-120,.5,-230)
+frame.Size=UDim2.new(0,250,0,480)
+frame.Position=UDim2.new(.5,-125,.5,-240)
 frame.BackgroundColor3=Color3.fromRGB(20,20,20)
 frame.Active=true
 frame.Draggable=true
@@ -49,15 +51,40 @@ Instance.new("UICorner",frame)
 local title=Instance.new("TextLabel",frame)
 title.Size=UDim2.new(1,0,0,40)
 title.BackgroundTransparency=1
-title.Text="Script Hub Pro Lite"
+title.Text="Script Hub"
 title.TextColor3=Color3.fromRGB(0,170,255)
 title.Font=Enum.Font.GothamBold
 title.TextSize=22
 
+-- Mobile Button
+local mobile=Instance.new("TextButton",gui)
+mobile.Size=UDim2.new(0,40,0,40)
+mobile.Position=UDim2.new(.5,-20,0,10)
+mobile.Text="-"
+mobile.BackgroundColor3=Color3.fromRGB(30,30,30)
+mobile.TextColor3=Color3.new(1,1,1)
+Instance.new("UICorner",mobile)
+
+mobile.MouseButton1Click:Connect(function()
+frame.Visible=not frame.Visible
+end)
+
+-- PC Toggle
+UIS.InputBegan:Connect(function(i,g)
+
+if g then return end
+
+if i.KeyCode==Enum.KeyCode.K then
+frame.Visible=not frame.Visible
+end
+
+end)
+
+-- Button
 local function Button(text,y,func)
 
 local b=Instance.new("TextButton",frame)
-b.Size=UDim2.new(0,200,0,32)
+b.Size=UDim2.new(0,210,0,32)
 b.Position=UDim2.new(0,20,0,y)
 b.BackgroundColor3=Color3.fromRGB(35,35,35)
 b.TextColor3=Color3.new(1,1,1)
@@ -70,6 +97,7 @@ return b
 
 end
 
+-- Toggle
 local function Toggle(text,y,setting)
 
 local b=Button(text,y)
@@ -104,6 +132,7 @@ end
 -- Fly
 local control={F=0,B=0,L=0,R=0,U=0,D=0}
 local flyBV=nil
+local flyConn=nil
 
 UIS.InputBegan:Connect(function(i,g)
 
@@ -128,19 +157,35 @@ if i.KeyCode==Enum.KeyCode.LeftShift then control.D=0 end
 
 end)
 
-RunService.RenderStepped:Connect(function()
+local function StopFly()
 
-if Settings.Fly and LP.Character then
+if flyConn then
+flyConn:Disconnect()
+flyConn=nil
+end
 
-local hrp=LP.Character:FindFirstChild("HumanoidRootPart")
+if flyBV then
+flyBV:Destroy()
+flyBV=nil
+end
 
-if hrp then
+end
 
-if not flyBV then
+local function StartFly()
+
+StopFly()
+
+local char=LP.Character
+if not char then return end
+
+local hrp=char:FindFirstChild("HumanoidRootPart")
+if not hrp then return end
+
 flyBV=Instance.new("BodyVelocity")
 flyBV.MaxForce=Vector3.new(1e9,1e9,1e9)
 flyBV.Parent=hrp
-end
+
+flyConn=RunService.RenderStepped:Connect(function()
 
 local cam=Camera.CFrame
 
@@ -151,18 +196,9 @@ local move=
 
 flyBV.Velocity=move*Settings.FlySpeed
 
-end
-
-else
-
-if flyBV then
-flyBV:Destroy()
-flyBV=nil
-end
-
-end
-
 end)
+
+end
 
 Toggle("Fly",60,"Fly")
 
@@ -172,6 +208,16 @@ end)
 
 Button("Fly Speed -",140,function()
 Settings.FlySpeed=math.max(20,Settings.FlySpeed-20)
+end)
+
+RunService.RenderStepped:Connect(function()
+
+if Settings.Fly and not flyBV then
+StartFly()
+elseif not Settings.Fly and flyBV then
+StopFly()
+end
+
 end)
 
 -- Noclip
@@ -241,6 +287,12 @@ for _,p in pairs(Players:GetPlayers()) do
 
 if p~=LP and p.Character and p.Character:FindFirstChild("Head") then
 
+local hum=p.Character:FindFirstChild("Humanoid")
+
+if Settings.KillCheck then
+if not hum or hum.Health<=0 then continue end
+end
+
 local head=p.Character.Head
 
 local pos,vis=Camera:WorldToViewportPoint(head.Position)
@@ -282,6 +334,7 @@ end
 
 end)
 
+-- Silent Aim
 Toggle("Silent Aim",300,"SilentAim")
 
 local mt=getrawmetatable(game)
@@ -312,12 +365,3 @@ end)
 
 Toggle("Wall Check",420,"WallCheck")
 Toggle("Kill Check",450,"KillCheck")
-
-UIS.InputBegan:Connect(function(i,g)
-
-if g then return end
-if i.KeyCode==Enum.KeyCode.K then
-frame.Visible=not frame.Visible
-end
-
-end)
