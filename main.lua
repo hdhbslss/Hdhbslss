@@ -1,5 +1,5 @@
-if getgenv().ScriptHubV7 then return end
-getgenv().ScriptHubV7=true
+if getgenv().HubPro then return end
+getgenv().HubPro=true
 
 local Players=game:GetService("Players")
 local RunService=game:GetService("RunService")
@@ -7,7 +7,6 @@ local UIS=game:GetService("UserInputService")
 
 local LP=Players.LocalPlayer
 local Camera=workspace.CurrentCamera
-local Mouse=LP:GetMouse()
 
 local Settings={
 Aimbot=false,
@@ -23,7 +22,7 @@ FlySpeed=80,
 FOV=120
 }
 
--- FOV
+-- FOV Circle
 local circle=Drawing.new("Circle")
 circle.Color=Color3.fromRGB(0,170,255)
 circle.Thickness=2
@@ -41,8 +40,8 @@ end)
 local gui=Instance.new("ScreenGui",game.CoreGui)
 
 local frame=Instance.new("Frame",gui)
-frame.Size=UDim2.new(0,260,0,580)
-frame.Position=UDim2.new(.5,-130,.5,-290)
+frame.Size=UDim2.new(0,260,0,540)
+frame.Position=UDim2.new(.5,-130,.5,-270)
 frame.BackgroundColor3=Color3.fromRGB(20,20,20)
 frame.Active=true
 frame.Draggable=true
@@ -54,7 +53,7 @@ stroke.Color=Color3.fromRGB(0,170,255)
 local title=Instance.new("TextLabel",frame)
 title.Size=UDim2.new(1,0,0,40)
 title.BackgroundTransparency=1
-title.Text="Script Hub V7"
+title.Text="Script Hub Pro"
 title.TextColor3=Color3.fromRGB(0,170,255)
 title.Font=Enum.Font.GothamBold
 title.TextSize=22
@@ -67,19 +66,7 @@ info.TextColor3=Color3.new(1,1,1)
 info.Font=Enum.Font.Gotham
 info.TextSize=14
 
--- Mobile button
-local mobile=Instance.new("TextButton",gui)
-mobile.Size=UDim2.new(0,40,0,40)
-mobile.Position=UDim2.new(.5,-20,0,10)
-mobile.Text="-"
-mobile.BackgroundColor3=Color3.fromRGB(30,30,30)
-mobile.TextColor3=Color3.new(1,1,1)
-Instance.new("UICorner",mobile)
-
-mobile.MouseButton1Click:Connect(function()
-frame.Visible=not frame.Visible
-end)
-
+-- Button
 local function Button(text,y,func)
 
 local b=Instance.new("TextButton",frame)
@@ -95,7 +82,8 @@ b.MouseButton1Click:Connect(func)
 return b
 end
 
-local function Toggle(text,y,setting,callback)
+-- Toggle
+local function Toggle(text,y,setting)
 
 local b=Button(text,y)
 
@@ -114,16 +102,21 @@ end
 update()
 
 b.MouseButton1Click:Connect(function()
+
 Settings[setting]=not Settings[setting]
 update()
-if callback then callback() end
+
+if setting=="Aimbot" then
+circle.Visible=Settings.Aimbot
+end
+
 end)
 
 end
 
 -- Fly
-local control={F=0,B=0,L=0,R=0,U=0,D=0}
 local flyConn
+local control={F=0,B=0,L=0,R=0,U=0,D=0}
 
 UIS.InputBegan:Connect(function(i,g)
 if g then return end
@@ -144,18 +137,7 @@ if i.KeyCode==Enum.KeyCode.Space then control.U=0 end
 if i.KeyCode==Enum.KeyCode.LeftShift then control.D=0 end
 end)
 
-local function StopFly()
-if flyConn then flyConn:Disconnect() end
-local char=LP.Character
-if char and char:FindFirstChild("HumanoidRootPart") then
-local v=char.HumanoidRootPart:FindFirstChild("Fly")
-if v then v:Destroy() end
-end
-end
-
 local function StartFly()
-
-StopFly()
 
 local char=LP.Character
 if not char then return end
@@ -163,7 +145,6 @@ if not char then return end
 local hrp=char:FindFirstChild("HumanoidRootPart")
 
 local bv=Instance.new("BodyVelocity")
-bv.Name="Fly"
 bv.MaxForce=Vector3.new(1e9,1e9,1e9)
 bv.Parent=hrp
 
@@ -182,9 +163,7 @@ end)
 
 end
 
-Toggle("Fly",70,"Fly",function()
-if Settings.Fly then StartFly() else StopFly() end
-end)
+Toggle("Fly",70,"Fly")
 
 Button("Fly Speed +",110,function()
 Settings.FlySpeed+=20
@@ -204,7 +183,6 @@ if player==LP then return end
 player.CharacterAdded:Connect(function(char)
 
 if not Settings.ESP then return end
-if char:FindFirstChild("Highlight") then return end
 
 local h=Instance.new("Highlight")
 h.FillColor=Color3.fromRGB(255,0,0)
@@ -220,23 +198,9 @@ end
 
 Players.PlayerAdded:Connect(AddESP)
 
--- WallCheck
-local function WallCheck(target)
-
-local origin=Camera.CFrame.Position
-local direction=(target.Position-origin)
-
-local params=RaycastParams.new()
-params.FilterType=Enum.RaycastFilterType.Blacklist
-params.FilterDescendantsInstances={LP.Character,target.Parent}
-
-local result=workspace:Raycast(origin,direction,params)
-
-return not result
-
-end
-
 -- Target
+local CurrentTarget=nil
+
 local function GetClosest()
 
 local closest=nil
@@ -249,16 +213,10 @@ if p~=LP and p.Character and p.Character:FindFirstChild("Head") then
 local hum=p.Character:FindFirstChild("Humanoid")
 
 if Settings.KillCheck then
-if not hum or hum.Health<=0 then
-continue
-end
+if not hum or hum.Health<=0 then continue end
 end
 
 local head=p.Character.Head
-
-if Settings.WallCheck and not WallCheck(head) then
-continue
-end
 
 local pos,vis=Camera:WorldToViewportPoint(head.Position)
 
@@ -278,66 +236,42 @@ end
 end
 
 return closest
-
 end
 
--- Aimbot
-Toggle("Aimbot",230,"Aimbot",function()
-circle.Visible=Settings.Aimbot
+task.spawn(function()
+
+while true do
+task.wait(0.05)
+CurrentTarget=GetClosest()
+end
+
 end)
+
+-- Aimbot
+Toggle("Aimbot",230,"Aimbot")
 
 RunService.RenderStepped:Connect(function()
 
 info.Text="FlySpeed: "..Settings.FlySpeed.." | FOV: "..Settings.FOV
 
-if Settings.Aimbot then
-
-local target=GetClosest()
-
-if target then
-Camera.CFrame=CFrame.new(Camera.CFrame.Position,target.Position)
+if Settings.Aimbot and CurrentTarget then
+Camera.CFrame=CFrame.new(Camera.CFrame.Position,CurrentTarget.Position)
 end
-
-end
-
-end)
-
--- Silent Aim
-Toggle("Silent Aim",270,"SilentAim")
-
-local mt=getrawmetatable(game)
-local old=mt.__index
-setreadonly(mt,false)
-
-mt.__index=newcclosure(function(self,key)
-
-if self==Mouse and key=="Hit" and Settings.SilentAim then
-
-local target=GetClosest()
-
-if target then
-return CFrame.new(target.Position)
-end
-
-end
-
-return old(self,key)
 
 end)
 
 -- Toggles
-Toggle("Wall Check",310,"WallCheck")
-Toggle("Kill Check",350,"KillCheck")
+Toggle("Wall Check",270,"WallCheck")
+Toggle("Kill Check",310,"KillCheck")
 
-Button("FOV +",390,function()
+Button("FOV +",350,function()
 Settings.FOV+=10
 end)
 
-Button("FOV -",430,function()
+Button("FOV -",390,function()
 Settings.FOV=math.max(30,Settings.FOV-10)
 end)
 
--- Hide UI
 UIS.InputBegan:Connect(function(i,g)
 if g then return end
 if i.KeyCode==Enum.KeyCode.K then
